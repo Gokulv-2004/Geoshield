@@ -4,6 +4,9 @@ from typing import Optional
 import pandas as pd
 import altair as alt
 from config import supabase
+import folium
+from streamlit_folium import st_folium
+import requests
 
 # Extra imports for map
 import folium
@@ -74,39 +77,75 @@ def show_global_alert(flood_risk, landslide_risk):
             unsafe_allow_html=True
         )
 
-# ---------- Weather Map ----------
+import folium
+from streamlit_folium import st_folium
+import requests
+
+# ---------- AUTO DETECT USER LOCATION ----------
+def get_user_location():
+    try:
+        res = requests.get("https://ipinfo.io/json").json()
+        loc = res["loc"].split(",")
+        lat, lon = float(loc[0]), float(loc[1])
+        city = res.get("city", "Unknown")
+        return lat, lon, city
+    except:
+        # fallback → Chennai
+        return 13.0827, 80.2707, "Chennai"
+
+# ---------- WEATHER MAP FUNCTION ----------
 def show_weather_map():
-    india_center = [22.9734, 78.6569]
-    m = folium.Map(location=india_center, zoom_start=5)
+    st.subheader("🛰️ Live Interactive Weather Map")
+    st.write("📍 Auto-detected your location & choose theme below:")
 
-    API_KEY = "YOUR_OPENWEATHER_API_KEY"
+    # Get user location
+    lat, lon, city = get_user_location()
+    st.info(f"Your location detected as: **{city}**")
 
-    # 🌧 Rainfall
-    folium.raster_layers.TileLayer(
-        tiles=f"https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
-        attr="OpenWeatherMap", name="Rainfall", overlay=True, control=True
-    ).add_to(m)
+    # Map theme selector
+    map_theme = st.selectbox(
+        "Choose Map Theme",
+        ["OpenStreetMap", "CartoDB positron", "CartoDB dark_matter", "Stamen Terrain", "Stamen Toner", "Esri WorldImagery (Satellite)"]
+    )
 
-    # 🌡 Temperature
-    folium.raster_layers.TileLayer(
-        tiles=f"https://tile.openweathermap.org/map/temp_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
-        attr="OpenWeatherMap", name="Temperature", overlay=True, control=True
-    ).add_to(m)
+    # Base map with selected theme
+    m = folium.Map(location=[lat, lon], zoom_start=6, tiles=map_theme)
 
-    # 💧 Humidity
-    folium.raster_layers.TileLayer(
-        tiles=f"https://tile.openweathermap.org/map/humidity_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
-        attr="OpenWeatherMap", name="Humidity", overlay=True, control=True
-    ).add_to(m)
+    # Add rainfall overlay (OpenWeather)
+    API_KEY = os.getenv("OPENWEATHER_API_KEY")
+    if API_KEY:
+        folium.raster_layers.TileLayer(
+            tiles=f"https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
+            attr="OpenWeatherMap",
+            name="🌧️ Rainfall",
+            overlay=True,
+            control=True
+        ).add_to(m)
 
-    # 🌬 Wind
-    folium.raster_layers.TileLayer(
-        tiles=f"https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
-        attr="OpenWeatherMap", name="Wind", overlay=True, control=True
-    ).add_to(m)
+        # Add humidity overlay
+        folium.raster_layers.TileLayer(
+            tiles=f"https://tile.openweathermap.org/map/humidity/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
+            attr="OpenWeatherMap",
+            name="💧 Humidity",
+            overlay=True,
+            control=True
+        ).add_to(m)
 
+        # Add wind overlay
+        folium.raster_layers.TileLayer(
+            tiles=f"https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
+            attr="OpenWeatherMap",
+            name="💨 Wind Speed",
+            overlay=True,
+            control=True
+        ).add_to(m)
+
+    # Layer control (to toggle overlays)
     folium.LayerControl().add_to(m)
-    st_folium(m, width=800, height=500)
+
+    # Render in Streamlit
+    st_folium(m, width=700, height=500)
+
 
 # ---------- Session defaults ----------
 if "page" not in st.session_state:
