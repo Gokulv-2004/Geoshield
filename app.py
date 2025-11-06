@@ -1,381 +1,65 @@
+
 import streamlit as st
-import os
-from typing import Optional
-import pandas as pd
-import altair as alt
-from config import supabase
-import folium
-from streamlit_folium import st_folium
-import requests
+from style import apply_theme
+apply_theme(title="🏠 Home — GeoShield", hide_sidebar=True)
 
-# Extra imports for map
-import folium
-from streamlit_folium import st_folium
+# ==== Page Config ====
+st.set_page_config(
+    page_title=" GeoShield — Smart Disaster Prediction",
+    page_icon="🌍",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-st.set_page_config(page_title="GeoShield", layout="wide")
+# ==== Custom Theme Styling ====
 
-# ---------- Helpers ----------
-def set_page(page: str):
-    st.session_state["page"] = page
-    st.rerun()
 
-def current_user_email() -> Optional[str]:
-    try:
-        user = st.session_state.get("user")
-        if user and getattr(user, "user", None) and getattr(user.user, "email", None):
-            return user.user.email
-    except Exception:
-        pass
-    return None
+# ==== Hero Section ====
+st.markdown("""
+    <div style="padding:32px 24px;border-radius:20px;
+                background:linear-gradient(135deg,#0f172a,#1e3a8a);
+                color:#e6eef7;border:1px solid #334155;
+                margin-bottom:32px;text-align:center;">
+      <h1 style="font-size:36px;margin-bottom:8px;">🌍 GeoShield</h1>
+      <p style="font-size:18px;margin:0;">Smart Disaster Prediction & Alert System</p>
+      <p style="font-size:14px;opacity:0.8;">Empowering communities with real-time weather intelligence</p>
+    </div>
+""", unsafe_allow_html=True)
 
-# ---------- Custom Alert Card ----------
-def show_risk_alert(label, risk):
-    color = {
-        "high": "#ff4d4d",      # red
-        "medium": "#ffa500",    # orange
-        "low": "#4CAF50"        # green
-    }
-    risk_level = str(risk).lower()
-    bg_color = color.get(risk_level, "#4CAF50")
+# ==== Call-to-Action Buttons (Signup + Login) ====
+col1, col2, col3 = st.columns([2, 1, 2])
 
-    st.markdown(
-        f"""
-        <div style="
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            color: white;
-            background-color: {bg_color};
-            font-weight: bold;
-            font-size: 16px;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
-        ">
-            ⚠️ {label} Risk: {risk.upper()}
+with col1:
+    st.page_link("pages/1_Signup.py", label="📝 Signup", use_container_width=True)
+with col2:
+    st.page_link("pages/2_Login.py", label="🔐 Login", use_container_width=True)
+
+# ==== Features Overview ====
+st.markdown("""
+    <br><br><hr style='opacity:0.2;'><br>
+    <div style="text-align:center;font-size:15px;line-height:1.6;opacity:0.95;">
+        <b>About GeoShield</b><br>
+        GeoShield is a next-gen disaster forecasting and alerting platform that combines real-time weather data,
+        smart risk modeling, and intuitive visualizations to keep you informed and safe.
+    </div>
+    <br>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+                gap:20px;margin-top:16px;font-size:14px;opacity:0.9;">
+        <div style="padding:12px;border:1px solid #334155;border-radius:12px;background:#EBDCC7;">
+            📡 <b>Live Weather Layers</b><br>Rainfall, Wind & Humidity overlays powered by OpenWeatherMap.
         </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-def show_global_alert(flood_risk, landslide_risk):
-    if str(flood_risk).lower() == "high" or str(landslide_risk).lower() == "high":
-        st.markdown(
-            """
-            <div style="
-                padding: 20px;
-                border-radius: 12px;
-                margin-bottom: 20px;
-                color: white;
-                background-color: #d00000;
-                font-weight: bold;
-                font-size: 18px;
-                text-align: center;
-                box-shadow: 0px 4px 15px rgba(0,0,0,0.3);
-            ">
-                🚨 EMERGENCY ALERT: High Risk Detected! Stay Safe & Follow Precautions 🚨
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-import folium
-from streamlit_folium import st_folium
-import requests
-
-# ---------- AUTO DETECT USER LOCATION ----------
-def get_user_location():
-    try:
-        res = requests.get("https://ipinfo.io/json").json()
-        loc = res["loc"].split(",")
-        lat, lon = float(loc[0]), float(loc[1])
-        city = res.get("city", "Unknown")
-        return lat, lon, city
-    except:
-        # fallback → Chennai
-        return 13.0827, 80.2707, "Chennai"
-
-# ---------- WEATHER MAP FUNCTION ----------
-def show_weather_map():
-    st.subheader("🛰️ Live Interactive Weather Map")
-    st.write("📍 Auto-detected your location & choose theme below:")
-
-    # Get user location
-    lat, lon, city = get_user_location()
-    st.info(f"Your location detected as: **{city}**")
-
-    # Map theme selector
-    map_theme = st.selectbox(
-        "Choose Map Theme",
-        ["OpenStreetMap", "CartoDB positron", "CartoDB dark_matter", "Stamen Terrain", "Stamen Toner", "Esri WorldImagery (Satellite)"]
-    )
-
-    # Base map with selected theme
-    m = folium.Map(location=[lat, lon], zoom_start=6, tiles=map_theme)
-
-    # Add rainfall overlay (OpenWeather)
-    API_KEY = os.getenv("OPENWEATHER_API_KEY")
-    if API_KEY:
-        folium.raster_layers.TileLayer(
-            tiles=f"https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
-            attr="OpenWeatherMap",
-            name="🌧️ Rainfall",
-            overlay=True,
-            control=True
-        ).add_to(m)
-
-        # Add humidity overlay
-        folium.raster_layers.TileLayer(
-            tiles=f"https://tile.openweathermap.org/map/humidity/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
-            attr="OpenWeatherMap",
-            name="💧 Humidity",
-            overlay=True,
-            control=True
-        ).add_to(m)
-
-        # Add wind overlay
-        folium.raster_layers.TileLayer(
-            tiles=f"https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}",
-            attr="OpenWeatherMap",
-            name="💨 Wind Speed",
-            overlay=True,
-            control=True
-        ).add_to(m)
-
-    # Layer control (to toggle overlays)
-    folium.LayerControl().add_to(m)
-
-    # Render in Streamlit
-    st_folium(m, width=700, height=500)
-
-
-# ---------- Session defaults ----------
-if "page" not in st.session_state:
-    st.session_state["page"] = "Home"
-if "city" not in st.session_state:
-    st.session_state["city"] = "Chennai"
-
-menu = ["Home", "Signup", "Login", "Dashboard"]
-
-# ---------- Sidebar (compact) ----------
-with st.sidebar.expander("📌 Menu", expanded=False):
-    choice = st.radio(
-        "Navigate",
-        menu,
-        index=menu.index(st.session_state["page"]),
-        key="nav_choice",
-    )
-
-if choice != st.session_state["page"]:
-    st.session_state["page"] = choice
-
-st.title("🌍 GeoShield - Smart Disaster Prediction & Alert System")
-
-page = st.session_state["page"]
-
-
-# ---------- HOME ----------
-if page == "Home":
-    st.subheader("🌍 Welcome to GeoShield 🚨")
-    st.markdown("""
-    GeoShield is a **smart disaster prediction system** for floods 🌊 & landslides ⛰️.  
-    Powered by **real-time weather data** from OpenWeather API.  
-
-    🔎 Explore the live India Weather Dashboard:
-    - 🌡️ Thermal-style weather visualization
-    - 🌧️ Rainfall overlay showing precipitation intensity
-    - 💧 Humidity + 💨 Wind layers for deeper insights
-    """)
-
-    # --- Live Weather Snapshot (India Center) ---
-    import requests
-    API_KEY = os.getenv("WEATHER_API")
-
-    if API_KEY:
-        url = f"https://api.openweathermap.org/data/2.5/weather?q=India&appid={API_KEY}&units=metric"
-        try:
-            res = requests.get(url).json()
-            temp = res["main"]["temp"]
-            humidity = res["main"]["humidity"]
-            wind = res["wind"]["speed"]
-            weather_desc = res["weather"][0]["description"].title()
-
-            st.info(f"""
-            **🌡️ Temperature:** {temp} °C  
-            **💧 Humidity:** {humidity}%  
-            **💨 Wind Speed:** {wind} m/s  
-            **🌧️ Condition:** {weather_desc}  
-            """)
-        except Exception as e:
-            st.warning("⚠️ Could not fetch live weather data.")
-    else:
-        st.warning("⚠️ No API key found. Please set `OPENWEATHER_API_KEY` in your environment.")
-
-    # --- Live Interactive Thermal Weather Map ---
-    m = folium.Map(location=[22.5, 78.9], zoom_start=5, control_scale=True, tiles="CartoDB dark_matter" ,world_copy_jump=True)
-
-    if API_KEY:
-        # Thermal-like Rainfall (primary focus)
-        rainfall_url = f"https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}"
-        temp_url     = f"https://tile.openweathermap.org/map/temp_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}"
-        humidity_url = f"https://tile.openweathermap.org/map/humidity_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}"
-        wind_url     = f"https://tile.openweathermap.org/map/wind_new/{{z}}/{{x}}/{{y}}.png?appid={API_KEY}"
-
-        # Add overlays
-        folium.TileLayer(rainfall_url, attr="OpenWeatherMap", name="🌧️ Rainfall Intensity", overlay=True , control=True, no_wrap=True).add_to(m)
-        folium.TileLayer(temp_url, attr="OpenWeatherMap", name="🌡️ Temperature Heatmap", overlay=True).add_to(m)
-        folium.TileLayer(humidity_url, attr="OpenWeatherMap", name="💧 Humidity", overlay=True).add_to(m)
-        folium.TileLayer(wind_url, attr="OpenWeatherMap", name="💨 Wind Speed", overlay=True).add_to(m)
-
-        # Layer control (collapsed like legend)
-        folium.LayerControl(collapsed=False).add_to(m)
-
-        st.subheader("🛰️ Live Thermal Weather Map (India)")
-        st.write("""
-        - **Rainfall layer** → darker = heavier rain  
-        - **Temperature layer** → warm colors = hotter regions  
-        - **Humidity & Wind layers** available for deeper exploration  
-        👉 Move/zoom on the map to focus on specific states.
-        """)
-        st_folium(m, width=750, height=520)
-    else:
-        st.error("🌐 Cannot render weather map without API key.")
-
-# ---------- SIGNUP ----------
-elif page == "Signup":
-    st.subheader("Create an Account")
-    email = st.text_input("Email", key="signup_email")
-    password = st.text_input("Password", type="password", key="signup_password")
-
-    col_a, col_b = st.columns([1, 1])
-    with col_a:
-        if st.button("Signup"):
-            try:
-                _ = supabase.auth.sign_up({"email": email, "password": password})
-                st.success("✅ Account created! Please login.")
-                set_page("Login")
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-    with col_b:
-        if st.button("Already have an account? Login"):
-            set_page("Login")
-
-# ---------- LOGIN ----------
-elif page == "Login":
-    if "user" in st.session_state and current_user_email():
-        set_page("Dashboard")
-
-    st.subheader("Login")
-    email = st.text_input("Email", key="login_email")
-    password = st.text_input("Password", type="password", key="login_password")
-
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        if st.button("Login"):
-            try:
-                user = supabase.auth.sign_in_with_password(
-                    {"email": email, "password": password}
-                )
-                if user and getattr(user, "user", None):
-                    st.success("✅ Logged in successfully!")
-                    st.session_state["user"] = user
-                    set_page("Dashboard")
-                else:
-                    st.error("❌ Invalid credentials")
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-    with c2:
-        if st.button("Create new account"):
-            set_page("Signup")
-
-# ---------- DASHBOARD ----------
-elif page == "Dashboard":
-    if "user" in st.session_state and current_user_email():
-        email = current_user_email()
-        top_left, top_right = st.columns([3, 1])
-        with top_left:
-            st.subheader(f"📊 Dashboard — Welcome {email}")
-        with top_right:
-            if st.button("Logout"):
-                try:
-                    supabase.auth.sign_out()
-                except Exception:
-                    pass
-                for k in ["user", "page"]:
-                    if k in st.session_state:
-                        del st.session_state[k]
-                set_page("Home")
-
-        st.divider()
-
-        # --- Weather + Real Risk ---
-        from utils import (
-            get_weather, flood_prediction, landslide_prediction,
-            get_rainfall_trend, save_weather_history
-        )
-
-        city = st.text_input("Enter city for weather check", "Chennai")
-        if st.button("Get Weather"):
-            with st.spinner("Fetching live weather…"):
-                data = get_weather(city)
-
-            if isinstance(data, dict) and "error" not in data:
-                m1, m2, m3, m4 = st.columns(4)
-                with m1:
-                    st.metric("🌡️ Temperature", f"{data['temp']} °C")
-                with m2:
-                    st.metric("💧 Humidity", f"{data['humidity']} %")
-                with m3:
-                    st.metric("🌧️ Rainfall (1h)", f"{data['rain']} mm")
-                with m4:
-                    st.metric("⛅ Condition", data['condition'])
-
-                flood_risk = flood_prediction(data["rain"], data["humidity"])
-                landslide_risk = landslide_prediction(data["rain"], data["humidity"])
-
-                show_global_alert(flood_risk, landslide_risk)
-                show_risk_alert("Flood", flood_risk)
-                show_risk_alert("Landslide", landslide_risk)
-
-                save_weather_history(email, city, data, flood_risk, landslide_risk)
-                st.success("✅ Weather query saved to history")
-
-                # --- Show Rainfall Trend directly (no button repeat) ---
-                trend = get_rainfall_trend(city)
-                if "error" not in trend:
-                    df = pd.DataFrame(trend)
-                    chart = alt.Chart(df).mark_line(point=True).encode(
-                        x="date",
-                        y="rainfall_mm"
-                    ).properties(width=600, height=300, title="🌧️ Rainfall Trend (Last 7 Days)")
-                    st.altair_chart(chart)
-                else:
-                    st.error(trend["error"])
-
-            else:
-                st.error(data.get("error", "Unknown error fetching weather."))
-
-        # --- 📜 Weather History ---
-        st.subheader("📜 Your Weather History")
-        try:
-            history = supabase.table("weather_history") \
-                .select("*") \
-                .eq("user_email", email) \
-                .order("created_at", desc=True) \
-                .limit(10) \
-                .execute()
-            if history.data:
-                df = pd.DataFrame(history.data)
-                st.dataframe(df[[
-                    "city", "temperature", "humidity",
-                    "rainfall", "flood_risk", "landslide_risk", "created_at"
-                ]])
-            else:
-                st.info("No history found yet.")
-        except Exception as e:
-            st.error(f"Error fetching history: {e}")
-
-    else:
-        st.warning("⚠️ Please login to access the dashboard.")
-        if st.button("Go to Login"):
-            set_page("Login")
+        <div style="padding:12px;border:1px solid #334155;border-radius:12px;background:#EBDCC7;">
+            🧠 <b>Fuzzy Risk Engine</b><br>AI-based flood & landslide prediction using fuzzy logic.
+        </div>
+        <div style="padding:12px;border:1px solid #334155;border-radius:12px;background:#EBDCC7;">
+            🚨 <b>Instant Alerts</b><br>High-risk zones trigger real-time emergency warnings.
+        </div>
+        <div style="padding:12px;border:1px solid #334155;border-radius:12px;background:#EBDCC7;">
+            📊 <b>Personalized Dashboards</b><br>Custom risk insights & weather history per user.
+        </div>
+    </div>
+    <br><br>
+    <div style="text-align:center;opacity:0.6;font-size:13px;">
+        © 2025 GeoShield • Built with 💙 using Streamlit & Supabase
+    </div>
+""", unsafe_allow_html=True)

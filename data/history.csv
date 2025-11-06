@@ -1,0 +1,4 @@
+timestamp,user,type,station,cap_pct,rain24_mm,inflow_ratio,risk_score,risk_bucket
+2025-11-05T08:37:56.787334+00:00,gokulkumarvvmg05@gmail.com,Dam Risk,(sample) Tungabhadra,60.0,0.0,0.0,15.0,low
+2025-11-05T12:13:10.768934+00:00,gokulkumarvvmg05@gmail.com,Dam Risk,almatti,60.0,0.0,0.0,48.0,MEDIUM
+,gokulkumarvvmg05@gmail.com,Fuzzy Risk,,60.0,5.0,0.8,24.999999999999996,low

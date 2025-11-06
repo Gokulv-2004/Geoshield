@@ -1,0 +1,11 @@
+reservoir_name,alias,wris_project_name,state,district,lat,lon,capacity_tmc,catchment_km2,design_spill_cumecs,curve_number
+Almatti,,almatti,karnataka,vijayapura,16.35,75.66,123.0,35769,8500,78
+Tungabhadra,,tungabhadra,karnataka,ballari,15.26,76.33,101.5,28118,11300,78
+Kabini,,kabini,karnataka,mysuru,11.92,76.24,19.5,2140,4200,80
+Harangi,,harangi,karnataka,kodagu,12.42,75.90,8.5,419,1600,82
+Hemavathi,,hemavathi,karnataka,hassan,12.81,75.70,37.1,2810,4600,80
+Sharavathi (Linganamakki),linganamakki,sharavathi,karnataka,shivamogga,14.27,74.82,128.8,1991,7200,77
+Narayanpur (Basava Sagar),narayanpur,basava_sagar,karnataka,yadgir,16.15,76.20,37.9,58000,7900,75
+Ghataprabha (Hidkal),hidkal,ghataprabha,karnataka,belagavi,16.18,74.60,35.8,8877,6200,78
+Malaprabha,,malaprabha,karnataka,belagavi,15.87,75.05,37.7,4148,5100,78
+Bhadra,,bhadra,karnataka,shivamogga,13.70,75.63,69.0,1960,6400,79
